@@ -1,0 +1,6 @@
+{
+  "name": "SubTranslate AI",
+  "description": "Professional AI-powered YouTube subtitle translator supporting Uzbek, English, Russian, and Arabic with synchronized timestamps, multimodal analysis, subscription management, and admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

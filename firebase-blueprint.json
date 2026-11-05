@@ -1,0 +1,257 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Registered user profile, free translation balance, subscription status, and usage counters.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the user." },
+        "email": { "type": "string", "description": "User email address." },
+        "displayName": { "type": "string", "description": "User display name." },
+        "accountStatus": { "type": "string", "enum": ["ACTIVE", "SUSPENDED"], "description": "Account standing." },
+        "subscriptionStatus": { "type": "string", "enum": ["FREE", "ACTIVE", "EXPIRED"], "description": "Current subscription tier." },
+        "freeTranslationsRemaining": { "type": "integer", "description": "Remaining free video translations." },
+        "completedTranslationsCount": { "type": "integer", "description": "Total completed video translations." },
+        "paidTranslationsCount": { "type": "integer", "description": "Total translations completed under paid subscription." },
+        "subscriptionStartAtMillis": { "type": "integer", "description": "Epoch milliseconds when subscription started." },
+        "subscriptionExpiresAtMillis": { "type": "integer", "description": "Epoch milliseconds when subscription expires." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of account creation (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update (FieldValue.serverTimestamp())." }
+      },
+      "required": [
+        "userId",
+        "email",
+        "displayName",
+        "accountStatus",
+        "subscriptionStatus",
+        "freeTranslationsRemaining",
+        "completedTranslationsCount",
+        "paidTranslationsCount",
+        "subscriptionStartAtMillis",
+        "subscriptionExpiresAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted administrator role document keyed by admin UID.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Admin UID." },
+        "email": { "type": "string", "description": "Admin email." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": ["userId", "email", "createdAt"]
+    },
+    "PlatformSettings": {
+      "title": "PlatformSettings",
+      "description": "Global platform configuration editable by administrators (AI provider, custom Gemini API key, pricing, card details, free quota).",
+      "type": "object",
+      "properties": {
+        "settingId": { "type": "string", "description": "Setting document identifier (global_config)." },
+        "subscriptionPriceUzs": { "type": "integer", "description": "Monthly subscription price in UZS." },
+        "paymentCardNumber": { "type": "string", "description": "Destination payment card number." },
+        "paymentAccountHolder": { "type": "string", "description": "Cardholder name." },
+        "subscriptionDurationDays": { "type": "integer", "description": "Subscription duration in days." },
+        "initialFreeTranslations": { "type": "integer", "description": "Default free translations for new users." },
+        "aiProviderMode": { "type": "string", "enum": ["FIREBASE_AI_LOGIC", "CUSTOM_GEMINI_KEY"], "description": "Active AI translation provider mode." },
+        "customGeminiApiKey": { "type": "string", "description": "Optional custom Gemini API key configured by administrator." },
+        "aiModelName": { "type": "string", "description": "Gemini model name (e.g., gemini-4-argon)." },
+        "customTranslationInstruction": { "type": "string", "description": "Additional custom translation instructions set by administrator." },
+        "updatedByEmail": { "type": "string", "description": "Email of administrator who last updated settings." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": [
+        "settingId",
+        "subscriptionPriceUzs",
+        "paymentCardNumber",
+        "paymentAccountHolder",
+        "subscriptionDurationDays",
+        "initialFreeTranslations",
+        "aiProviderMode",
+        "customGeminiApiKey",
+        "aiModelName",
+        "customTranslationInstruction",
+        "updatedByEmail",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TranslationRecord": {
+      "title": "TranslationRecord",
+      "description": "Synchronized YouTube or audio/subtitle translation history item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID." },
+        "userEmail": { "type": "string", "description": "Owner email." },
+        "videoUrl": { "type": "string", "description": "YouTube video URL or uploaded file name." },
+        "videoId": { "type": "string", "description": "YouTube 11-char ID or file identifier." },
+        "videoTitle": { "type": "string", "description": "Video or media title." },
+        "channelAuthor": { "type": "string", "description": "Channel author or speaker." },
+        "sourceLanguage": { "type": "string", "enum": ["uz", "en", "ru", "ar", "auto"], "description": "Original language code." },
+        "detectedLanguage": { "type": "string", "description": "Detected original language label." },
+        "targetLanguage": { "type": "string", "enum": ["uz", "en", "ru", "ar"], "description": "Target translation language code." },
+        "isPaidTranslation": { "type": "boolean", "description": "Whether this translation used a paid subscription." },
+        "subtitleCount": { "type": "integer", "description": "Number of synchronized subtitle cues." },
+        "subtitlesJson": { "type": "string", "description": "Serialized JSON array of synchronized subtitle segments." },
+        "originalTranscriptPreview": { "type": "string", "description": "Preview of the source transcript." },
+        "translatedTranscriptPreview": { "type": "string", "description": "Preview of the translated transcript." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": [
+        "userId",
+        "userEmail",
+        "videoUrl",
+        "videoId",
+        "videoTitle",
+        "channelAuthor",
+        "sourceLanguage",
+        "detectedLanguage",
+        "targetLanguage",
+        "isPaidTranslation",
+        "subtitleCount",
+        "subtitlesJson",
+        "originalTranscriptPreview",
+        "translatedTranscriptPreview",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PaymentSubmission": {
+      "title": "PaymentSubmission",
+      "description": "Monthly subscription payment receipt awaiting or processed by administrator.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Payer UID." },
+        "userEmail": { "type": "string", "description": "Payer email." },
+        "amountUzs": { "type": "integer", "description": "Subscription price in UZS." },
+        "cardNumber": { "type": "string", "description": "Destination card number." },
+        "accountHolder": { "type": "string", "description": "Destination account holder." },
+        "receiptFileName": { "type": "string", "description": "Uploaded receipt filename." },
+        "receiptMimeType": { "type": "string", "enum": ["image/jpeg", "image/png", "application/pdf"], "description": "Receipt MIME type." },
+        "receiptDataBase64": { "type": "string", "description": "Encoded receipt image/PDF preview payload." },
+        "aiReceiptSummary": { "type": "string", "description": "Gemini multimodal inspection summary of the receipt." },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"], "description": "Payment verification status." },
+        "adminNote": { "type": "string", "description": "Administrator review note." },
+        "reviewedByEmail": { "type": "string", "description": "Email of administrator who approved or rejected." },
+        "approvedAtMillis": { "type": "integer", "description": "Epoch millis when payment was approved." },
+        "subscriptionExpiresAtMillis": { "type": "integer", "description": "Epoch millis when the subscription expires." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": [
+        "userId",
+        "userEmail",
+        "amountUzs",
+        "cardNumber",
+        "accountHolder",
+        "receiptFileName",
+        "receiptMimeType",
+        "receiptDataBase64",
+        "aiReceiptSummary",
+        "status",
+        "adminNote",
+        "reviewedByEmail",
+        "approvedAtMillis",
+        "subscriptionExpiresAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SupportMessage": {
+      "title": "SupportMessage",
+      "description": "User message, bug report, or attachment sent to administrators via Contact Admin.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Sender UID." },
+        "userEmail": { "type": "string", "description": "Sender email." },
+        "category": { "type": "string", "enum": ["QUESTION", "TECHNICAL_PROBLEM", "TRANSLATION_ERROR", "PAYMENT_RECEIPT", "ASSISTANCE"], "description": "Support topic category." },
+        "subject": { "type": "string", "description": "Support message subject." },
+        "message": { "type": "string", "description": "Support message content." },
+        "attachmentFileName": { "type": "string", "description": "Optional attachment filename." },
+        "attachmentMimeType": { "type": "string", "description": "Optional attachment MIME type." },
+        "attachmentDataBase64": { "type": "string", "description": "Optional encoded screenshot or receipt." },
+        "status": { "type": "string", "enum": ["OPEN", "RESOLVED"], "description": "Resolution status." },
+        "adminReply": { "type": "string", "description": "Administrator response message." },
+        "repliedByEmail": { "type": "string", "description": "Administrator email who replied." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": [
+        "userId",
+        "userEmail",
+        "category",
+        "subject",
+        "message",
+        "attachmentFileName",
+        "attachmentMimeType",
+        "attachmentDataBase64",
+        "status",
+        "adminReply",
+        "repliedByEmail",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "In-app notification for administrators and users.",
+      "type": "object",
+      "properties": {
+        "recipientUserId": { "type": "string", "description": "Target user UID or 'ADMIN' for administrator alerts." },
+        "senderUserId": { "type": "string", "description": "UID of user or admin triggering the notification." },
+        "senderEmail": { "type": "string", "description": "Email of sender." },
+        "type": { "type": "string", "enum": ["NEW_USER", "PAYMENT_SUBMITTED", "PAYMENT_APPROVED", "PAYMENT_REJECTED", "SUPPORT_MESSAGE", "SUPPORT_REPLY", "SUBSCRIPTION_EXPIRED"], "description": "Notification event type." },
+        "title": { "type": "string", "description": "Short notification title." },
+        "body": { "type": "string", "description": "Notification body text." },
+        "isRead": { "type": "boolean", "description": "Read status." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp." }
+      },
+      "required": [
+        "recipientUserId",
+        "senderUserId",
+        "senderEmail",
+        "type",
+        "title",
+        "body",
+        "isRead",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserAccount",
+      "description": "User accounts, subscription status, and translation counters."
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminRole",
+      "description": "Administrator role lookup collection."
+    },
+    "/app_settings/{settingId}": {
+      "schema": "PlatformSettings",
+      "description": "Global platform and AI configuration managed by administrators."
+    },
+    "/translations/{translationId}": {
+      "schema": "TranslationRecord",
+      "description": "Synchronized video subtitle translations."
+    },
+    "/payments/{paymentId}": {
+      "schema": "PaymentSubmission",
+      "description": "Monthly subscription payment receipts and approval records."
+    },
+    "/support_messages/{messageId}": {
+      "schema": "SupportMessage",
+      "description": "Contact Admin support tickets, screenshots, and replies."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "AppNotification",
+      "description": "System notifications for users and administrators."
+    }
+  }
+}

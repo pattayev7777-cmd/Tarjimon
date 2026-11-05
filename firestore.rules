@@ -1,0 +1,421 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Authorized Administrators:
+    // 1. Verified email matching the authorized administrator list (including runtime user email), OR
+    // 2. Trusted /admins/{uid} document lookup
+    function isAdmin() {
+      return isSignedIn() && (
+        (
+          'email_verified' in request.auth.token &&
+          request.auth.token.email_verified == true &&
+          'email' in request.auth.token &&
+          request.auth.token.email in [
+            'muhammadadhamov0000@gamil.com',
+            'akbarakramov0000@gmail.com',
+            'pattayev7777@gamail.com',
+            'pattayev7777@gmail.com',
+            'Pattayev7777@gmail.com'
+          ]
+        ) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprint: UserAccount
+    function isValidUserAccount(data) {
+      return data.keys().hasAll([
+               'userId', 'email', 'displayName', 'accountStatus', 'subscriptionStatus',
+               'freeTranslationsRemaining', 'completedTranslationsCount', 'paidTranslationsCount',
+               'subscriptionStartAtMillis', 'subscriptionExpiresAtMillis', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'email', 'displayName', 'accountStatus', 'subscriptionStatus',
+               'freeTranslationsRemaining', 'completedTranslationsCount', 'paidTranslationsCount',
+               'subscriptionStartAtMillis', 'subscriptionExpiresAtMillis', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.accountStatus in ['ACTIVE', 'SUSPENDED'] &&
+             data.subscriptionStatus in ['FREE', 'ACTIVE', 'EXPIRED'] &&
+             data.freeTranslationsRemaining is int && data.freeTranslationsRemaining >= 0 && data.freeTranslationsRemaining <= 100000 &&
+             data.completedTranslationsCount is int && data.completedTranslationsCount >= 0 &&
+             data.paidTranslationsCount is int && data.paidTranslationsCount >= 0 &&
+             data.subscriptionStartAtMillis is int && data.subscriptionStartAtMillis >= 0 &&
+             data.subscriptionExpiresAtMillis is int && data.subscriptionExpiresAtMillis >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Blueprint: AdminRole
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['userId', 'email', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'email', 'createdAt']) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    // Validation Blueprint: PlatformSettings
+    function isValidPlatformSettings(data) {
+      return data.keys().hasAll([
+               'settingId', 'subscriptionPriceUzs', 'paymentCardNumber', 'paymentAccountHolder',
+               'subscriptionDurationDays', 'initialFreeTranslations', 'aiProviderMode',
+               'customGeminiApiKey', 'aiModelName', 'customTranslationInstruction',
+               'updatedByEmail', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'settingId', 'subscriptionPriceUzs', 'paymentCardNumber', 'paymentAccountHolder',
+               'subscriptionDurationDays', 'initialFreeTranslations', 'aiProviderMode',
+               'customGeminiApiKey', 'aiModelName', 'customTranslationInstruction',
+               'updatedByEmail', 'createdAt', 'updatedAt'
+             ]) &&
+             data.settingId is string && data.settingId.size() >= 1 && data.settingId.size() <= 64 &&
+             data.subscriptionPriceUzs is int && data.subscriptionPriceUzs >= 0 && data.subscriptionPriceUzs <= 100000000 &&
+             data.paymentCardNumber is string && data.paymentCardNumber.size() >= 4 && data.paymentCardNumber.size() <= 64 &&
+             data.paymentAccountHolder is string && data.paymentAccountHolder.size() >= 1 && data.paymentAccountHolder.size() <= 100 &&
+             data.subscriptionDurationDays is int && data.subscriptionDurationDays >= 1 && data.subscriptionDurationDays <= 3650 &&
+             data.initialFreeTranslations is int && data.initialFreeTranslations >= 0 && data.initialFreeTranslations <= 10000 &&
+             data.aiProviderMode in ['FIREBASE_AI_LOGIC', 'CUSTOM_GEMINI_KEY'] &&
+             data.customGeminiApiKey is string && data.customGeminiApiKey.size() <= 300 &&
+             data.aiModelName is string && data.aiModelName.size() >= 1 && data.aiModelName.size() <= 100 &&
+             data.customTranslationInstruction is string && data.customTranslationInstruction.size() <= 2000 &&
+             data.updatedByEmail is string && data.updatedByEmail.size() <= 200 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Blueprint: TranslationRecord
+    function isValidTranslationRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'userEmail', 'videoUrl', 'videoId', 'videoTitle', 'channelAuthor',
+               'sourceLanguage', 'detectedLanguage', 'targetLanguage', 'isPaidTranslation',
+               'subtitleCount', 'subtitlesJson', 'originalTranscriptPreview',
+               'translatedTranscriptPreview', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'userEmail', 'videoUrl', 'videoId', 'videoTitle', 'channelAuthor',
+               'sourceLanguage', 'detectedLanguage', 'targetLanguage', 'isPaidTranslation',
+               'subtitleCount', 'subtitlesJson', 'originalTranscriptPreview',
+               'translatedTranscriptPreview', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userEmail is string && data.userEmail.size() <= 200 &&
+             data.videoUrl is string && data.videoUrl.size() >= 1 && data.videoUrl.size() <= 500 &&
+             data.videoId is string && data.videoId.size() >= 1 && data.videoId.size() <= 64 &&
+             data.videoTitle is string && data.videoTitle.size() >= 1 && data.videoTitle.size() <= 300 &&
+             data.channelAuthor is string && data.channelAuthor.size() <= 200 &&
+             data.sourceLanguage in ['uz', 'en', 'ru', 'ar', 'auto'] &&
+             data.detectedLanguage is string && data.detectedLanguage.size() <= 40 &&
+             data.targetLanguage in ['uz', 'en', 'ru', 'ar'] &&
+             data.isPaidTranslation is bool &&
+             data.subtitleCount is int && data.subtitleCount >= 0 && data.subtitleCount <= 5000 &&
+             data.subtitlesJson is string && data.subtitlesJson.size() <= 200000 &&
+             data.originalTranscriptPreview is string && data.originalTranscriptPreview.size() <= 20000 &&
+             data.translatedTranscriptPreview is string && data.translatedTranscriptPreview.size() <= 20000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Blueprint: PaymentSubmission
+    function isValidPaymentSubmission(data) {
+      return data.keys().hasAll([
+               'userId', 'userEmail', 'amountUzs', 'cardNumber', 'accountHolder',
+               'receiptFileName', 'receiptMimeType', 'receiptDataBase64', 'aiReceiptSummary',
+               'status', 'adminNote', 'reviewedByEmail', 'approvedAtMillis',
+               'subscriptionExpiresAtMillis', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'userEmail', 'amountUzs', 'cardNumber', 'accountHolder',
+               'receiptFileName', 'receiptMimeType', 'receiptDataBase64', 'aiReceiptSummary',
+               'status', 'adminNote', 'reviewedByEmail', 'approvedAtMillis',
+               'subscriptionExpiresAtMillis', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 200 &&
+             data.amountUzs is int && data.amountUzs >= 1000 && data.amountUzs <= 100000000 &&
+             data.cardNumber is string && data.cardNumber.size() >= 4 && data.cardNumber.size() <= 64 &&
+             data.accountHolder is string && data.accountHolder.size() >= 1 && data.accountHolder.size() <= 100 &&
+             data.receiptFileName is string && data.receiptFileName.size() >= 1 && data.receiptFileName.size() <= 200 &&
+             data.receiptMimeType in ['image/jpeg', 'image/png', 'application/pdf'] &&
+             data.receiptDataBase64 is string && data.receiptDataBase64.size() <= 350000 &&
+             data.aiReceiptSummary is string && data.aiReceiptSummary.size() <= 2000 &&
+             data.status in ['PENDING', 'APPROVED', 'REJECTED'] &&
+             data.adminNote is string && data.adminNote.size() <= 500 &&
+             data.reviewedByEmail is string && data.reviewedByEmail.size() <= 200 &&
+             data.approvedAtMillis is int && data.approvedAtMillis >= 0 &&
+             data.subscriptionExpiresAtMillis is int && data.subscriptionExpiresAtMillis >= 0 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Blueprint: SupportMessage
+    function isValidSupportMessage(data) {
+      return data.keys().hasAll([
+               'userId', 'userEmail', 'category', 'subject', 'message',
+               'attachmentFileName', 'attachmentMimeType', 'attachmentDataBase64',
+               'status', 'adminReply', 'repliedByEmail', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'userEmail', 'category', 'subject', 'message',
+               'attachmentFileName', 'attachmentMimeType', 'attachmentDataBase64',
+               'status', 'adminReply', 'repliedByEmail', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 200 &&
+             data.category in ['QUESTION', 'TECHNICAL_PROBLEM', 'TRANSLATION_ERROR', 'PAYMENT_RECEIPT', 'ASSISTANCE'] &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 200 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 4000 &&
+             data.attachmentFileName is string && data.attachmentFileName.size() <= 200 &&
+             data.attachmentMimeType is string && data.attachmentMimeType.size() <= 100 &&
+             data.attachmentDataBase64 is string && data.attachmentDataBase64.size() <= 350000 &&
+             data.status in ['OPEN', 'RESOLVED'] &&
+             data.adminReply is string && data.adminReply.size() <= 4000 &&
+             data.repliedByEmail is string && data.repliedByEmail.size() <= 200 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // Validation Blueprint: AppNotification
+    function isValidAppNotification(data) {
+      return data.keys().hasAll([
+               'recipientUserId', 'senderUserId', 'senderEmail',
+               'type', 'title', 'body', 'isRead', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'recipientUserId', 'senderUserId', 'senderEmail',
+               'type', 'title', 'body', 'isRead', 'createdAt', 'updatedAt'
+             ]) &&
+             data.recipientUserId is string && data.recipientUserId.size() >= 1 && data.recipientUserId.size() <= 128 &&
+             data.senderUserId is string && data.senderUserId.size() >= 1 && data.senderUserId.size() <= 128 &&
+             data.senderEmail is string && data.senderEmail.size() <= 200 &&
+             data.type in ['NEW_USER', 'PAYMENT_SUBMITTED', 'PAYMENT_APPROVED', 'PAYMENT_REJECTED', 'SUPPORT_MESSAGE', 'SUPPORT_REPLY', 'SUBSCRIPTION_EXPIRED'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 1500 &&
+             data.isRead is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 1. /users/{userId}
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       isValidUserAccount(incoming()) &&
+                       incoming().accountStatus == 'ACTIVE' &&
+                       incoming().subscriptionStatus == 'FREE' &&
+                       incoming().freeTranslationsRemaining == 5 &&
+                       incoming().completedTranslationsCount == 0 &&
+                       incoming().paidTranslationsCount == 0 &&
+                       incoming().subscriptionStartAtMillis == 0 &&
+                       incoming().subscriptionExpiresAtMillis == 0;
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidUserAccount(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Owner Action 1: Update displayName
+                         (request.auth.uid == userId &&
+                          existing().accountStatus == 'ACTIVE' &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt'])) ||
+                         // Owner Action 2: Consume 1 free translation
+                         (request.auth.uid == userId &&
+                          existing().accountStatus == 'ACTIVE' &&
+                          existing().freeTranslationsRemaining > 0 &&
+                          incoming().freeTranslationsRemaining == existing().freeTranslationsRemaining - 1 &&
+                          incoming().completedTranslationsCount == existing().completedTranslationsCount + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['freeTranslationsRemaining', 'completedTranslationsCount', 'updatedAt'])) ||
+                         // Owner Action 3: Record 1 paid translation while subscription is active
+                         (request.auth.uid == userId &&
+                          existing().accountStatus == 'ACTIVE' &&
+                          existing().subscriptionStatus == 'ACTIVE' &&
+                          existing().subscriptionExpiresAtMillis > request.time.toMillis() &&
+                          incoming().paidTranslationsCount == existing().paidTranslationsCount + 1 &&
+                          incoming().completedTranslationsCount == existing().completedTranslationsCount + 1 &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['paidTranslationsCount', 'completedTranslationsCount', 'updatedAt'])) ||
+                         // Owner Action 4: Automatic subscription expiration transition
+                         (request.auth.uid == userId &&
+                          existing().subscriptionStatus == 'ACTIVE' &&
+                          existing().subscriptionExpiresAtMillis <= request.time.toMillis() &&
+                          incoming().subscriptionStatus == 'EXPIRED' &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['subscriptionStatus', 'updatedAt'])) ||
+                         // Admin Action: Full management over user fields, quota, status, and subscription
+                         (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly([
+                           'email', 'displayName', 'accountStatus', 'subscriptionStatus',
+                           'freeTranslationsRemaining', 'completedTranslationsCount', 'paidTranslationsCount',
+                           'subscriptionStartAtMillis', 'subscriptionExpiresAtMillis', 'updatedAt'
+                         ]))
+                       );
+
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // 2. /admins/{adminId}
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && isValidId(adminId) && isValidAdminRole(incoming()) && incoming().userId == adminId;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    // 3. /app_settings/{settingId}
+    match /app_settings/{settingId} {
+      allow get: if isSignedIn() && isValidId(settingId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(settingId) && isValidPlatformSettings(incoming()) && incoming().settingId == settingId;
+      allow update: if isAdmin() &&
+                       isValidId(settingId) &&
+                       isValidPlatformSettings(incoming()) &&
+                       incoming().settingId == existing().settingId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'subscriptionPriceUzs', 'paymentCardNumber', 'paymentAccountHolder',
+                         'subscriptionDurationDays', 'initialFreeTranslations', 'aiProviderMode',
+                         'customGeminiApiKey', 'aiModelName', 'customTranslationInstruction',
+                         'updatedByEmail', 'updatedAt'
+                       ]);
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+
+    // 4. /translations/{translationId}
+    match /translations/{translationId} {
+      allow get: if isSignedIn() && isValidId(translationId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(translationId) &&
+                       incoming().userId == request.auth.uid &&
+                       isValidTranslationRecord(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(translationId) &&
+                       isValidTranslationRecord(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (existing().userId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['subtitlesJson', 'translatedTranscriptPreview', 'updatedAt'])) ||
+                         (isAdmin() &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'videoUrl', 'videoId', 'videoTitle', 'channelAuthor',
+                            'sourceLanguage', 'detectedLanguage', 'targetLanguage',
+                            'subtitleCount', 'subtitlesJson', 'originalTranscriptPreview',
+                            'translatedTranscriptPreview', 'updatedAt'
+                          ]))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(translationId) && (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // 5. /payments/{paymentId}
+    match /payments/{paymentId} {
+      allow get: if isSignedIn() && isValidId(paymentId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      // Users can ONLY submit a receipt with status == 'PENDING' and zero approval timestamps
+      allow create: if isSignedIn() &&
+                       isValidId(paymentId) &&
+                       incoming().userId == request.auth.uid &&
+                       isValidPaymentSubmission(incoming()) &&
+                       incoming().status == 'PENDING' &&
+                       incoming().approvedAtMillis == 0 &&
+                       incoming().subscriptionExpiresAtMillis == 0 &&
+                       incoming().adminNote == '' &&
+                       incoming().reviewedByEmail == '';
+
+      // Admin can approve, reject, or modify payment status, while preventing accidental duplicate APPROVED -> APPROVED
+      allow update: if isAdmin() &&
+                       isValidId(paymentId) &&
+                       isValidPaymentSubmission(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       !(existing().status == 'APPROVED' && incoming().status == 'APPROVED') &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'amountUzs', 'cardNumber', 'accountHolder', 'status',
+                         'adminNote', 'reviewedByEmail', 'approvedAtMillis',
+                         'subscriptionExpiresAtMillis', 'updatedAt'
+                       ]);
+
+      allow delete: if isAdmin() && isValidId(paymentId);
+    }
+
+    // 6. /support_messages/{messageId}
+    match /support_messages/{messageId} {
+      allow get: if isSignedIn() && isValidId(messageId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(messageId) &&
+                       incoming().userId == request.auth.uid &&
+                       isValidSupportMessage(incoming()) &&
+                       incoming().status == 'OPEN' &&
+                       incoming().adminReply == '' &&
+                       incoming().repliedByEmail == '';
+
+      allow update: if isSignedIn() &&
+                       isValidId(messageId) &&
+                       isValidSupportMessage(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (existing().userId == request.auth.uid &&
+                          existing().status == 'OPEN' &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['subject', 'message', 'updatedAt'])) ||
+                         (isAdmin() &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['category', 'subject', 'message', 'status', 'adminReply', 'repliedByEmail', 'updatedAt']))
+                       );
+
+      allow delete: if isAdmin() && isValidId(messageId);
+    }
+
+    // 7. /notifications/{notificationId}
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && isValidId(notificationId) && (existing().recipientUserId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().recipientUserId == request.auth.uid || isAdmin());
+
+      allow create: if isSignedIn() &&
+                       isValidId(notificationId) &&
+                       incoming().senderUserId == request.auth.uid &&
+                       isValidAppNotification(incoming()) &&
+                       (incoming().recipientUserId == 'ADMIN' || incoming().recipientUserId == request.auth.uid || isAdmin());
+
+      allow update: if isSignedIn() &&
+                       isValidId(notificationId) &&
+                       isValidAppNotification(incoming()) &&
+                       incoming().senderUserId == existing().senderUserId &&
+                       incoming().recipientUserId == existing().recipientUserId &&
+                       incoming().createdAt == existing().createdAt &&
+                       (existing().recipientUserId == request.auth.uid || isAdmin()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'isRead', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(notificationId) && (existing().recipientUserId == request.auth.uid || isAdmin());
+    }
+  }
+}
